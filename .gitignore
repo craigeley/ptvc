@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Generated proto stubs (user generates locally from their own SDK copy)
+PTSL_pb2.py
+PTSL_pb2_grpc.py
