@@ -261,11 +261,7 @@ def update_version_log(version_dir, index):
     config = get_config(index)
 
     lines = [
-        f"# {session_name} — Version History\n",
-        "",
-        f"*Numbering: starts at {config['start_number']}, "
-        f"increments by {config['increment_by']}, "
-        f"prefix \"{config['prefix']}\"*\n",
+        f"# {session_name} — Version History",
         "",
     ]
 
@@ -273,15 +269,12 @@ def update_version_log(version_dir, index):
     for v in reversed(index["versions"]):
         ts = datetime.fromisoformat(v["timestamp"])
         date_str = ts.strftime("%Y-%m-%d %H:%M")
-
-        lines.append(f"## {v['version_tag']} — {date_str}\n")
-
-        if v.get("notes"):
-            lines.append(f"**Notes:** {v['notes']}\n")
-
-        lines.append(f"- **Tracks:** {v.get('track_count', 'N/A')} | **Clips:** {v.get('clip_count', 'N/A')}")
         filename = v.get('snapshot_filename', v.get('snapshot_name', ''))
-        lines.append(f"- **File:** `{filename}.ptx`")
+
+        lines.append(f"{v['version_tag']} — {date_str}")
+        if v.get("notes"):
+            lines.append(f"  {v['notes']}")
+        lines.append(f"  {v.get('track_count', '?')} tracks, {v.get('clip_count', '?')} clips | {filename}.ptx")
         lines.append("")
 
     with open(log_path, "w") as f:
