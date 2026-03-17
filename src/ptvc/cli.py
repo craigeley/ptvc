@@ -218,7 +218,16 @@ def cmd_snapshot(args):
     config = get_config(index)
 
     # Determine version tag
-    if args.tag:
+    if args.bump:
+        try:
+            bump_num = Decimal(args.bump)
+        except Exception:
+            print(f"Error: '{args.bump}' is not a valid version number.")
+            sys.exit(1)
+        version_num_decimal = bump_num
+        version_tag = format_version_number(bump_num, config)
+        version_num = str(bump_num)
+    elif args.tag:
         version_tag = args.tag
         version_num = str(next_version_number(index))
     elif config.get("date_format"):
@@ -521,6 +530,10 @@ def main():
     snap_parser.add_argument(
         "--tag", "-t", default="",
         help="Custom version tag (overrides auto-numbering for this snapshot)"
+    )
+    snap_parser.add_argument(
+        "--bump", "-b", default="",
+        help="Jump to a specific version number (e.g., '1.00'); future versions increment from here"
     )
     snap_parser.set_defaults(func=cmd_snapshot)
 
