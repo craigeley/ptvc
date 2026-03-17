@@ -9,8 +9,8 @@ import json
 import grpc
 
 # These are generated from PTSL.proto — see generate_proto.sh
-import PTSL_pb2
-import PTSL_pb2_grpc
+from .proto import PTSL_pb2
+from .proto import PTSL_pb2_grpc
 
 # Must match the SDK version that your Pro Tools version expects
 PTSL_VERSION_MAJOR = 2025

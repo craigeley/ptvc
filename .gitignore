@@ -5,6 +5,12 @@ __pycache__/
 .venv/
 venv/
 
-# Generated proto stubs (user generates locally from their own SDK copy)
-PTSL_pb2.py
-PTSL_pb2_grpc.py
+# Top-level proto stubs (legacy, before package restructure)
+/PTSL_pb2.py
+/PTSL_pb2_grpc.py
+
+# Built distributions
+dist/
+build/
+*.egg-info/
+src/*.egg-info/

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptvc"
+version = "0.1.0"
+description = "Pro Tools Version Control — versioned snapshots of Pro Tools sessions via PTSL"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = [
+    "grpcio>=1.43.0",
+    "grpcio-tools>=1.43.0",
+]
+
+[project.scripts]
+ptvc = "ptvc.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

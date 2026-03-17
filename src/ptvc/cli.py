@@ -7,11 +7,11 @@ markdown logs. Each snapshot uses SaveSessionAs to create a full copy
 that Pro Tools can open directly (preserving Import Session Data access).
 
 Usage:
-    python pt_snapshot.py snapshot "Added background vocals, revised chorus"
-    python pt_snapshot.py log
-    python pt_snapshot.py info
-    python pt_snapshot.py config --start-number 0.00 --increment-by 0.05
-    python pt_snapshot.py config --prefix "mix-"
+    ptvc snapshot "Added background vocals, revised chorus"
+    ptvc log
+    ptvc info
+    ptvc config --start-number 0.00 --increment-by 0.05
+    ptvc config --prefix "mix-"
 """
 
 import argparse
@@ -23,7 +23,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from ptsl_client import PTSLClient
+from .client import PTSLClient
 
 # Stored alongside the session folder
 DEFAULT_VERSION_DIR_NAME = "Versions"
@@ -40,6 +40,7 @@ DEFAULT_CONFIG = {
     "prefix": "v",
     "zero_pad": 3,        # number of digits to pad (e.g., 3 → v001)
     "folder_name": DEFAULT_VERSION_DIR_NAME,
+    "date_format": "",    # strftime format string; empty = numeric mode
 }
 
 
@@ -160,6 +161,34 @@ def format_version_number(number, config):
     return f"{prefix}{num_str}"
 
 
+def format_date_version(config, existing_versions, timestamp=None):
+    """Generate a date-based version tag with an auto-incrementing counter.
+
+    Uses config["date_format"] as a strftime format string. If multiple
+    snapshots produce the same date string, appends -2, -3, etc.
+
+    Returns (version_tag, date_base) where date_base is the raw strftime output.
+    """
+    if timestamp is None:
+        timestamp = datetime.now()
+
+    prefix = config.get("prefix", "")
+    date_str = timestamp.strftime(config["date_format"])
+    base_tag = f"{prefix}{date_str}"
+
+    # Count how many existing versions share this date base
+    count = 0
+    for v in existing_versions:
+        tag = v.get("version_tag", "")
+        if tag == base_tag or tag.startswith(base_tag + "-"):
+            count += 1
+
+    if count == 0:
+        return base_tag, date_str
+    else:
+        return f"{base_tag}-{count + 1}", date_str
+
+
 def next_version_number(index):
     """Calculate the next version number from config and existing versions."""
     config = get_config(index)
@@ -192,6 +221,10 @@ def cmd_snapshot(args):
     if args.tag:
         version_tag = args.tag
         version_num = str(next_version_number(index))
+    elif config.get("date_format"):
+        version_tag, version_num = format_date_version(
+            config, index["versions"]
+        )
     else:
         version_num_decimal = next_version_number(index)
         version_tag = format_version_number(version_num_decimal, config)
@@ -314,17 +347,26 @@ def cmd_info(args):
     config = get_config(index)
     num_versions = len(index.get("versions", []))
 
+    date_fmt = config.get("date_format", "")
+
     print(f"\nVersions folder: {version_dir.name}/")
-    print(f"Numbering: start={config['start_number']}, "
-          f"increment={config['increment_by']}, prefix=\"{config['prefix']}\"")
+    if date_fmt:
+        print(f"Versioning: date-based ({date_fmt}), prefix=\"{config['prefix']}\"")
+    else:
+        print(f"Versioning: numeric, start={config['start_number']}, "
+              f"increment={config['increment_by']}, prefix=\"{config['prefix']}\"")
 
     if num_versions:
         latest = index["versions"][-1]
         print(f"Versions: {num_versions} snapshots")
         print(f"Latest:   {latest['version_tag']} ({latest['timestamp'][:16]})")
-        next_num = next_version_number(index)
-        next_tag = format_version_number(next_num, config)
-        print(f"Next:     {next_tag}")
+        if date_fmt:
+            next_tag, _ = format_date_version(config, index["versions"])
+            print(f"Next:     {next_tag}")
+        else:
+            next_num = next_version_number(index)
+            next_tag = format_version_number(next_num, config)
+            print(f"Next:     {next_tag}")
     else:
         print("No snapshots yet.")
 
@@ -397,34 +439,69 @@ def cmd_config(args):
         index["config"]["folder_name"] = new_name
         changed = True
 
+    if args.date_format is not None:
+        # Validate the format string by trying it
+        fmt = args.date_format
+        if fmt:
+            try:
+                datetime.now().strftime(fmt)
+            except ValueError as e:
+                print(f"Error: Invalid strftime format: {e}")
+                sys.exit(1)
+        index["config"]["date_format"] = fmt
+        changed = True
+        if fmt:
+            print(f"Switched to date-based versioning: {fmt}")
+        else:
+            print("Switched back to numeric versioning.")
+
     if changed:
         save_version_index(version_dir, index)
         print("Config updated.\n")
 
     # Show current config
     config = get_config(index)
+    date_fmt = config.get("date_format", "")
+
     print(f"Session:      {info['session_name']}")
     print(f"Folder:       {config['folder_name']}/")
-    print(f"Start number: {config['start_number']}")
-    print(f"Increment by: {config['increment_by']}")
-    print(f"Prefix:       \"{config['prefix']}\"")
-    print(f"Zero pad:     {config['zero_pad']} digits")
+    if date_fmt:
+        print(f"Mode:         date-based")
+        print(f"Date format:  {date_fmt}")
+        print(f"Prefix:       \"{config['prefix']}\"")
+    else:
+        print(f"Mode:         numeric")
+        print(f"Start number: {config['start_number']}")
+        print(f"Increment by: {config['increment_by']}")
+        print(f"Prefix:       \"{config['prefix']}\"")
+        print(f"Zero pad:     {config['zero_pad']} digits")
 
     # Show preview of what the next few versions would look like
     print(f"\nPreview of next versions:")
-    start = Decimal(config["start_number"])
-    inc = Decimal(config["increment_by"])
+    if date_fmt:
+        now = datetime.now()
+        prefix = config.get("prefix", "")
+        date_str = now.strftime(date_fmt)
+        base_tag = f"{prefix}{date_str}"
+        print(f"  {base_tag}  (next)")
+        print(f"  {base_tag}-2")
+        print(f"  {base_tag}-3")
+        print(f"  {base_tag}-4")
+        print(f"  {base_tag}-5")
+    else:
+        start = Decimal(config["start_number"])
+        inc = Decimal(config["increment_by"])
 
-    # If there are existing versions, start from the next one
-    if index["versions"]:
-        last = Decimal(str(index["versions"][-1]["version_number"]))
-        start = last + inc
+        # If there are existing versions, start from the next one
+        if index["versions"]:
+            last = Decimal(str(index["versions"][-1]["version_number"]))
+            start = last + inc
 
-    for i in range(5):
-        num = start + (inc * i)
-        tag = format_version_number(num, config)
-        marker = " (next)" if i == 0 else ""
-        print(f"  {tag}{marker}")
+        for i in range(5):
+            num = start + (inc * i)
+            tag = format_version_number(num, config)
+            marker = " (next)" if i == 0 else ""
+            print(f"  {tag}{marker}")
 
 
 def main():
@@ -482,6 +559,11 @@ def main():
     config_parser.add_argument(
         "--folder-name", default=None,
         help=f"Name of the versions folder (default: '{DEFAULT_VERSION_DIR_NAME}')"
+    )
+    config_parser.add_argument(
+        "--date-format", default=None,
+        help="strftime format for date-based versioning (e.g., '%%Y.%%-m'). "
+             "Pass empty string '' to switch back to numeric mode."
     )
     config_parser.set_defaults(func=cmd_config)
 

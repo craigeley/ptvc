@@ -11,11 +11,11 @@ The tool is aliased as `ptvc` in the user's `~/.zshrc`.
 ## Setup
 
 ```bash
-pip3 install -r requirements.txt
+pip3 install -e .
 ./generate_proto.sh /path/to/PTSL_SDK/Source
 ```
 
-`generate_proto.sh` takes the path to the PTSL C++ SDK's `Source/` directory (containing `PTSL.proto`) and generates `PTSL_pb2.py` and `PTSL_pb2_grpc.py`. These generated stubs are gitignored.
+`pip install -e .` installs the package in editable mode with the `ptvc` console entry point. `generate_proto.sh` takes the path to the PTSL C++ SDK's `Source/` directory (containing `PTSL.proto`) and generates proto stubs into `src/ptvc/proto/`. The generated stubs are committed to the repo (required for Homebrew distribution).
 
 ## How It Works
 
@@ -27,10 +27,12 @@ Pro Tools runs a gRPC server on `localhost:31416` automatically when it launches
 
 ## Files
 
-- **pt_snapshot.py** — CLI entry point with subcommands: `snapshot`, `log`, `info`, `config`
-- **ptsl_client.py** — Thin gRPC client wrapper around PTSL. Sends JSON-bodied commands, handles response parsing.
-- **generate_proto.sh** — Generates Python proto stubs from the PTSL SDK's `.proto` file
-- **requirements.txt** — Just `grpcio` and `grpcio-tools`
+- **src/ptvc/cli.py** — CLI entry point with subcommands: `snapshot`, `log`, `info`, `config`
+- **src/ptvc/client.py** — Thin gRPC client wrapper around PTSL. Sends JSON-bodied commands, handles response parsing.
+- **src/ptvc/proto/** — Generated gRPC stubs (committed; required for distribution)
+- **pyproject.toml** — Package metadata, dependencies, and `ptvc` console entry point
+- **generate_proto.sh** — Generates Python proto stubs from the PTSL SDK's `.proto` file into `src/ptvc/proto/`
+- **requirements.txt** — Legacy; dependencies now in pyproject.toml
 
 ## Per-Session Data
 
@@ -51,6 +53,10 @@ Each Pro Tools session's version data lives in a `Versions/` folder (name config
 - **`SaveSessionAs`:** Creates a full session folder, not just a `.ptx` file. Assertion errors occur with some path types (CloudStorage/Dropbox symlinks). We bypass this entirely by using `shutil.copy2` instead.
 - **Version headers:** Must send `version` (2025), `version_minor` (10), `version_revision` (0) matching the SDK version. Mismatches cause `SDK_VersionMismatch` errors.
 - **`CId_GetClipList`:** Only available since Pro Tools 2025.06
+
+## Packaging
+
+The project is structured as an installable Python package (`pip install -e .`) with a `ptvc` console entry point defined in `pyproject.toml`. Proto stubs are committed to the repo so the package can be distributed without requiring users to have the PTSL SDK. See memory file `project_homebrew_packaging.md` for the Homebrew tap roadmap and Avid licensing details.
 
 ## Licensing
 

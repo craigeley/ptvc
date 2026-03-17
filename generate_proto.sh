@@ -26,10 +26,16 @@ if [ ! -f "$PROTO_DIR/PTSL.proto" ]; then
     exit 1
 fi
 
+OUT_DIR="$SCRIPT_DIR/src/ptvc/proto"
+mkdir -p "$OUT_DIR"
+
 python3 -m grpc_tools.protoc \
     --proto_path="$PROTO_DIR" \
-    --python_out="$SCRIPT_DIR" \
-    --grpc_python_out="$SCRIPT_DIR" \
+    --python_out="$OUT_DIR" \
+    --grpc_python_out="$OUT_DIR" \
     "$PROTO_DIR/PTSL.proto"
 
-echo "Generated PTSL_pb2.py and PTSL_pb2_grpc.py in $SCRIPT_DIR"
+# Fix the generated import to use a relative import within the package
+sed -i '' 's/^import PTSL_pb2 as/from . import PTSL_pb2 as/' "$OUT_DIR/PTSL_pb2_grpc.py"
+
+echo "Generated PTSL_pb2.py and PTSL_pb2_grpc.py in $OUT_DIR"
