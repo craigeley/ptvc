@@ -37,7 +37,7 @@ APP_NAME = "pt_snapshot"
 DEFAULT_CONFIG = {
     "start_number": "1",
     "increment_by": "1",
-    "prefix": "v",
+    "prefix": " v",
     "zero_pad": 3,        # number of digits to pad (e.g., 3 → v001)
     "folder_name": DEFAULT_VERSION_DIR_NAME,
     "date_format": "",    # strftime format string; empty = numeric mode
@@ -234,7 +234,7 @@ def cmd_snapshot(args):
     notes = args.notes
 
     # Snapshot is just a copy of the .ptx file in the Versions folder
-    snapshot_filename = f"{session_name}_{version_tag}"
+    snapshot_filename = f"{session_name}{version_tag}"
     version_dir.mkdir(parents=True, exist_ok=True)
 
     # Save current session first
