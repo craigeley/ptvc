@@ -41,6 +41,8 @@ DEFAULT_CONFIG = {
     "zero_pad": 3,        # number of digits to pad (e.g., 3 → v001)
     "folder_name": DEFAULT_VERSION_DIR_NAME,
     "date_format": "",    # strftime format string; empty = numeric mode
+    "text_export": True,  # export session info as text with each snapshot
+    "text_format": "UTF8",  # UTF8, TextEdit, or Excel
 }
 
 
@@ -256,6 +258,20 @@ def cmd_snapshot(args):
     dest_ptx = version_dir / f"{snapshot_filename}.ptx"
     shutil.copy2(str(source_ptx), str(dest_ptx))
 
+    # Export session info as text
+    do_export = config.get("text_export", True)
+    if args.no_text_export:
+        do_export = False
+    if do_export:
+        text_format = config.get("text_format", "UTF8")
+        session_folder = Path(session_path).parent
+        export_path = str(session_folder / f"{session_name} Session Info.txt")
+        print(f"Exporting session info: {session_name} Session Info.txt")
+        try:
+            client.export_session_info_as_text(export_path, text_format=text_format)
+        except Exception as e:
+            print(f"  Warning: text export failed ({e})")
+
     # Store session-level metadata once
     if "session_info" not in index:
         index["session_info"] = {
@@ -464,6 +480,14 @@ def cmd_config(args):
         else:
             print("Switched back to numeric versioning.")
 
+    if args.text_export is not None:
+        index["config"]["text_export"] = (args.text_export == "on")
+        changed = True
+
+    if args.text_format is not None:
+        index["config"]["text_format"] = args.text_format
+        changed = True
+
     if changed:
         save_version_index(version_dir, index)
         print("Config updated.\n")
@@ -484,6 +508,13 @@ def cmd_config(args):
         print(f"Increment by: {config['increment_by']}")
         print(f"Prefix:       \"{config['prefix']}\"")
         print(f"Zero pad:     {config['zero_pad']} digits")
+
+    text_export = config.get("text_export", True)
+    print(f"Text export:  {'on' if text_export else 'off'}", end="")
+    if text_export:
+        print(f" ({config.get('text_format', 'UTF8')})")
+    else:
+        print()
 
     # Show preview of what the next few versions would look like
     print(f"\nPreview of next versions:")
@@ -535,6 +566,10 @@ def main():
         "--bump", "-b", default="",
         help="Jump to a specific version number (e.g., '1.00'); future versions increment from here"
     )
+    snap_parser.add_argument(
+        "--no-text-export", action="store_true", default=False,
+        help="Skip the session info text export for this snapshot"
+    )
     snap_parser.set_defaults(func=cmd_snapshot)
 
     # log
@@ -577,6 +612,14 @@ def main():
         "--date-format", default=None,
         help="strftime format for date-based versioning (e.g., '%%Y.%%-m'). "
              "Pass empty string '' to switch back to numeric mode."
+    )
+    config_parser.add_argument(
+        "--text-export", default=None, choices=["on", "off"],
+        help="Enable/disable session info text export with each snapshot (default: on)"
+    )
+    config_parser.add_argument(
+        "--text-format", default=None, choices=["UTF8", "TextEdit", "Excel"],
+        help="Format for session info text export (default: UTF8)"
     )
     config_parser.set_defaults(func=cmd_config)
 

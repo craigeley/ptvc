@@ -139,20 +139,23 @@ class PTSLClient:
             return total
         return len(result.get("clips", []))
 
-    def export_session_info_as_text(self, output_path):
+    def export_session_info_as_text(self, output_path, text_format="UTF8",
+                                       include_file_list=True,
+                                       include_markers=True,
+                                       include_plugin_list=True):
         """Export session info to a text file."""
         body = json.dumps({
-            "include_file_list": True,
-            "include_clip_list": True,
-            "include_markers": True,
-            "include_plugin_list": True,
-            "include_track_edls": True,
+            "include_file_list": include_file_list,
+            "include_clip_list": False,
+            "include_markers": include_markers,
+            "include_plugin_list": include_plugin_list,
+            "include_track_edls": False,
             "show_sub_frames": False,
-            "include_user_timestamps": True,
+            "include_user_timestamps": False,
             "track_list_type": "AllTracks",
-            "fade_handling_type": "ShowCrossfades",
+            "fade_handling_type": "DontShowCrossfades",
             "track_offset_options": "BarsBeats",
-            "text_as_file_format": "UTF8",
+            "text_as_file_format": text_format,
             "output_type": "ESI_File",
             "output_path": output_path,
         })
