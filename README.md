@@ -31,6 +31,8 @@ You can run `ptvc` from any directory in your terminal — it asks Pro Tools whi
 
 ### Creating snapshots
 
+Basic usage: `ptvc snapshot "note here"`; note that `s` can be used as a shortcut for `snapshot.
+
 ```bash
 ptvc snapshot "Added theme music"
 ptvc s "Added theme music"                 # shorthand alias
