@@ -41,7 +41,7 @@ DEFAULT_CONFIG = {
     "zero_pad": 3,        # number of digits to pad (e.g., 3 → v001)
     "folder_name": DEFAULT_VERSION_DIR_NAME,
     "date_format": "",    # strftime format string; empty = numeric mode
-    "text_export": True,  # export session info as text with each snapshot
+    "text_export": False,  # export session info as text with each snapshot
     "text_format": "UTF8",  # UTF8, TextEdit, or Excel
 }
 
