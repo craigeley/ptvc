@@ -1,6 +1,6 @@
 # ptvc — Pro Tools Version Control
 
-A CLI tool that creates versioned snapshots of Pro Tools sessions via the PTSL gRPC API. Each snapshot copies the `.ptx` session file into a `Versions/` folder with a human-readable markdown log.
+A CLI tool that creates versioned snapshots of Pro Tools sessions via the PTSL gRPC API. Each snapshot copies the `.ptx` session file into a `Versions/` folder alongside the session, with a human-readable markdown log.
 
 Requires Pro Tools 2025+ running on the same machine.
 
@@ -12,9 +12,97 @@ brew install craigeley/tap/ptvc
 
 Note: The first install takes ~4 minutes because the gRPC dependency compiles from source.
 
-### Development install
+## How It Works
 
-If you want to make changes to the code:
+Pro Tools does non-destructive editing — the `.ptx` session file is a manifest of references to audio files, not the audio itself. Copying the `.ptx` file is enough to capture the full state of a session.
+
+When you run `ptvc snapshot`, it:
+
+1. Connects to Pro Tools via its built-in gRPC server (`localhost:31416`)
+2. Saves the current session
+3. Copies the `.ptx` file into a `Versions/` folder next to the session
+4. Updates a machine-readable JSON index and a human-readable markdown log
+
+You can run `ptvc` from any directory — it asks Pro Tools which session is open and works from there.
+
+## Usage
+
+### Creating snapshots
+
+```bash
+ptvc snapshot "Added background vocals"
+ptvc snapshot                              # no notes
+ptvc snapshot "Rough mix" --tag "rough"    # custom one-off label
+ptvc snapshot "Final mix" --bump 1.00      # jump to version 1.00
+```
+
+The `--tag` flag overrides the version label for a single snapshot without affecting the numbering sequence. The `--bump` flag jumps to a specific version number, and future snapshots increment from there.
+
+### Viewing history
+
+```bash
+ptvc log     # display the version history
+ptvc info    # show session info, version count, and next version number
+```
+
+### Configuration
+
+Settings are stored per-session in the `Versions/` folder. Run `ptvc config` with no flags to view current settings and a preview of the next few version numbers.
+
+#### Version numbering
+
+```bash
+ptvc config --prefix " v"            # prefix before the number (default: " v")
+ptvc config --start-number 1         # starting number (default: 1)
+ptvc config --increment-by 1         # increment per snapshot (default: 1)
+ptvc config --zero-pad 3             # zero-pad digits (default: 3, e.g., v001)
+```
+
+Examples of what different configs produce:
+
+| Config | Sequence |
+|--------|----------|
+| Default | `My Session v001.ptx`, `My Session v002.ptx`, ... |
+| `--prefix " mix" --zero-pad 0` | `My Session mix1.ptx`, `My Session mix2.ptx`, ... |
+| `--start-number 0.00 --increment-by 0.05` | `My Session v0.00.ptx`, `My Session v0.05.ptx`, ... |
+
+#### Date-based versioning
+
+Instead of sequential numbers, you can use date-based version strings with any Python [strftime](https://strftime.org/) format:
+
+```bash
+ptvc config --date-format "%Y.%-m"         # v2026.3, v2026.3-2, v2026.4, ...
+ptvc config --date-format "%Y.%-m.%-d"     # v2026.3.17, v2026.3.17-2, ...
+ptvc config --date-format ""               # switch back to numeric
+```
+
+If multiple snapshots land on the same date string, a counter is appended automatically (`-2`, `-3`, etc.).
+
+#### Versions folder
+
+```bash
+ptvc config --folder-name "Snapshots"      # rename the versions folder
+```
+
+#### Session info text export
+
+Optionally export Pro Tools' session info (file list, markers, plugin list) as a text file alongside each snapshot. This is useful for diffing in git.
+
+```bash
+ptvc config --text-export on               # enable (off by default)
+ptvc config --text-export off              # disable
+ptvc config --text-format UTF8             # format: UTF8 (default), TextEdit, or Excel
+```
+
+The text file is saved in the session's top-level folder and overwrites on each snapshot, so it always reflects the latest state.
+
+You can also skip the export for a single snapshot:
+
+```bash
+ptvc snapshot "Quick save" --no-text-export
+```
+
+## Development
 
 ```bash
 brew install pipx
@@ -28,28 +116,3 @@ You may need Homebrew Python and `~/.local/bin` on your PATH. Add to `~/.zshrc`:
 export PATH="$(brew --prefix)/opt/python@3/libexec/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 ```
-
-## Usage
-
-Open a session in Pro Tools, then from any directory:
-
-```bash
-ptvc snapshot "Added background vocals"   # create a versioned snapshot
-ptvc log                                   # view version history
-ptvc info                                  # show session info and version status
-ptvc config                                # view current versioning settings
-```
-
-## Configuration
-
-```bash
-ptvc config --prefix "mix "                # change version prefix (default: " v")
-ptvc config --start-number 100             # start numbering at 100
-ptvc config --increment-by 0.05            # use decimal increments
-ptvc config --zero-pad 4                   # pad to 4 digits (e.g., v0001)
-ptvc config --date-format "%Y.%-m"         # switch to date-based versioning
-ptvc config --date-format ""               # switch back to numeric
-ptvc config --folder-name "Snapshots"      # rename the versions folder
-```
-
-Config is stored per-session in the versions folder.
