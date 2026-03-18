@@ -10,8 +10,6 @@ Requires Pro Tools 2025+ running on the same machine.
 brew install craigeley/tap/ptvc
 ```
 
-Note: The first install takes ~4 minutes because the gRPC dependency compiles from source.
-
 ## How It Works
 
 By default, Pro Tools makes automatic backups of session files every x minutes based on user settings. However, these backups have hardcoded numbers, are eventually deleted over time, and do not contain any readable notes or metadata.
