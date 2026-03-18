@@ -30,8 +30,8 @@ You can run `ptvc` from any directory in your terminal — it asks Pro Tools whi
 
 `ptvc` has two snapshot modes:
 
-- **`live`** (default) — Advances Pro Tools to the next version via SaveSessionAs and archives the previous `.ptx` into `Versions/`. You're always working in the latest version.
-- **`archive`** — Copies the `.ptx` into `Versions/` without changing the active session. The original session file stays untouched.
+- **`live`** (default) — Advances Pro Tools to the next version via SaveSessionAs and archives the previous `.ptx` into `Versions/`. You're always working in the .ptx file with the latest version number ("Session v5"). A common media production workflow.
+- **`archive`** — Makes a copy of the current session into `Versions/` and increments the version number in the Versions folder, but does not rename the active session. Works more like a word processor workflow, where the versions are tucked away if you need them.
 
 ```bash
 ptvc config --mode live       # default
