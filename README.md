@@ -7,7 +7,7 @@ Requires Pro Tools 2025+ running on the same machine.
 ## Install
 
 ```bash
-brew install craigeley/ptvc/ptvc
+brew install craigeley/tap/ptvc
 ```
 
 ### Development install
