@@ -1,6 +1,6 @@
 # ptvc — Pro Tools Version Control
 
-A CLI tool that creates versioned snapshots of Pro Tools sessions via the PTSL gRPC API. Each snapshot copies the `.ptx` session file into a `Versions/` folder alongside the session, with a human-readable markdown log.
+`ptvc` is a CLI tool that creates versioned snapshots of Pro Tools sessions via the PTSL gRPC API. Each snapshot copies the `.ptx` session file into a `Versions/` folder alongside the session, with a human-readable markdown log.
 
 Requires Pro Tools 2025+ running on the same machine.
 
@@ -14,7 +14,9 @@ Note: The first install takes ~4 minutes because the gRPC dependency compiles fr
 
 ## How It Works
 
-Pro Tools does non-destructive editing — the `.ptx` session file is a manifest of references to audio files, not the audio itself. Copying the `.ptx` file is enough to capture the full state of a session.
+By default, Pro Tools makes automatic backups of session files every x minutes based on user settings. However, these backups are sequentially numbered, deleted over time, and do not contain any meaningful, easily-readable notes or metadata. It was built for podcast and audio documentary professionals, but could be useful for anyone using Pro Tools.
+
+`ptvc` creates manual backups with user-specified version numbers and an accompanying notes file to help you manage your backups and generate text files that could be easily used in `git`-based workflows.
 
 When you run `ptvc snapshot`, it:
 
@@ -23,16 +25,16 @@ When you run `ptvc snapshot`, it:
 3. Copies the `.ptx` file into a `Versions/` folder next to the session
 4. Updates a machine-readable JSON index and a human-readable markdown log
 
-You can run `ptvc` from any directory — it asks Pro Tools which session is open and works from there.
+You can run `ptvc` from any directory in your terminal — it asks Pro Tools which session is open and works from there.
 
 ## Usage
 
 ### Creating snapshots
 
 ```bash
-ptvc snapshot "Added background vocals"
+ptvc snapshot "Added theme music"
 ptvc snapshot                              # no notes
-ptvc snapshot "Rough mix" --tag "rough"    # custom one-off label
+ptvc snapshot "Rough cut" --tag "rough"    # custom one-off label
 ptvc snapshot "Final mix" --bump 1.00      # jump to version 1.00
 ```
 
