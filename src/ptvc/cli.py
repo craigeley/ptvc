@@ -726,7 +726,18 @@ def cmd_template(args):
     """Manage global config templates."""
     action = args.action
 
-    if action == "save":
+    if action == "init":
+        if TEMPLATES_FILE.exists():
+            print(f"Templates file already exists: {TEMPLATES_FILE}")
+            print("Open it in any text editor to add or modify templates.")
+        else:
+            seed_templates_file()
+            print(f"Created templates file: {TEMPLATES_FILE}")
+            print("Open it in any text editor to get started — it includes")
+            print("all available settings and an example template.")
+        return
+
+    elif action == "save":
         client = connect()
         info = get_session_info(client)
         client.close()
@@ -889,8 +900,12 @@ def main():
     )
     template_sub = template_parser.add_subparsers(dest="action", required=True)
 
+    template_sub.add_parser(
+        "init", help="Create a starter ~/.ptvc_templates.yaml file with defaults and examples"
+    )
+
     save_tmpl = template_sub.add_parser(
-        "save", help="Save the current session's config as a named template"
+        "save", help="Save the current session's config as a named template: ptvc template save <name>"
     )
     save_tmpl.add_argument("name", help="Template name (e.g., 'podcast', 'song exploder')")
 
@@ -899,12 +914,12 @@ def main():
     )
 
     show_tmpl = template_sub.add_parser(
-        "show", help="Show the settings in a template"
+        "show", help="Show the settings in a template: ptvc template show <name>"
     )
     show_tmpl.add_argument("name", help="Template name to show")
 
     delete_tmpl = template_sub.add_parser(
-        "delete", help="Delete a saved template"
+        "delete", help="Delete a saved template: ptvc template delete <name>"
     )
     delete_tmpl.add_argument("name", help="Template name to delete")
 
