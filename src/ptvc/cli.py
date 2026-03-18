@@ -455,10 +455,10 @@ def cmd_config(args):
         session_folder = Path(info["session_path"]).parent
         new_dir = session_folder / new_name
         if new_dir != version_dir:
-            if new_dir.exists():
-                print(f"Error: '{new_dir}' already exists.")
-                sys.exit(1)
             if version_dir.exists() and any(version_dir.iterdir()):
+                if new_dir.exists():
+                    print(f"Error: Cannot rename '{version_dir.name}/' to '{new_name}/' — target already exists.")
+                    sys.exit(1)
                 version_dir.rename(new_dir)
                 print(f"Renamed folder: {version_dir.name}/ → {new_name}/")
                 version_dir = new_dir
