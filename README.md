@@ -127,6 +127,50 @@ You can also skip the export for a single snapshot:
 ptvc snapshot "Quick save" --no-text-export
 ```
 
+### Templates
+
+If you find yourself using the same settings across multiple sessions, you can save them as reusable templates in a global YAML file (`~/.ptvc_templates.yaml`).
+
+#### Getting started
+
+```bash
+ptvc template init    # creates ~/.ptvc_templates.yaml with defaults and examples
+```
+
+Open the file in any text editor to add templates. Each template only needs the settings you want to change — everything else keeps its default value:
+
+```yaml
+templates:
+  my podcast:
+    prefix: " ep"
+    zero_pad: 2
+    mode: archive
+    text_export: true
+  mixing:
+    prefix: " v"
+    increment_by: "1"
+    zero_pad: 3
+    mode: live
+```
+
+#### Applying a template
+
+```bash
+ptvc config --template "my podcast"    # apply a template to the current session
+ptvc config -t "mixing" --zero-pad 4      # apply a template, then override a setting
+```
+
+#### Managing templates
+
+```bash
+ptvc template save "my preset"    # save the current session's config as a template
+ptvc template list                # list all saved templates
+ptvc template show "my preset"    # view a template's settings
+ptvc template delete "my preset"  # remove a template
+```
+
+Templates saved with `ptvc template save` only store settings that differ from the defaults, keeping them minimal and forward-compatible.
+
 ## Development
 
 ```bash
