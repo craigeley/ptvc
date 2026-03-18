@@ -47,15 +47,3 @@ ptvc config --folder-name "Snapshots"      # rename the versions folder
 ```
 
 Config is stored per-session in the versions folder.
-
-## Alfred Workflow
-
-If you use [Alfred](https://www.alfredapp.com/), download `PTVC.alfredworkflow` from this repo and double-click to install. Requires ptvc to be installed first (see above).
-
-Keywords:
-
-| Keyword | Action |
-|---------|--------|
-| `pts` | Create a snapshot (type notes after the keyword) |
-| `ptl` | View the version log (displayed in Large Type) |
-| `pti` | View session info (displayed in Large Type) |
