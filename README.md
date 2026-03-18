@@ -6,21 +6,25 @@ Requires Pro Tools 2025+ running on the same machine.
 
 ## Install
 
-1. Make sure Homebrew Python is on your PATH. Add this to `~/.zshrc`:
-
 ```bash
-export PATH="$(brew --prefix)/opt/python@3/libexec/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
+brew install craigeley/ptvc/ptvc
 ```
 
-Then reload your shell: `source ~/.zshrc`
+### Development install
 
-2. Install pipx and ptvc:
+If you want to make changes to the code:
 
 ```bash
 brew install pipx
 git clone https://github.com/craigeley/ptvc.git
 pipx install -e ./ptvc
+```
+
+You may need Homebrew Python and `~/.local/bin` on your PATH. Add to `~/.zshrc`:
+
+```bash
+export PATH="$(brew --prefix)/opt/python@3/libexec/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Usage
