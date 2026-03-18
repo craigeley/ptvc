@@ -16,6 +16,8 @@ Usage:
 """
 
 import argparse
+
+from ptvc import __version__
 from decimal import Decimal, ROUND_DOWN
 import json
 import os
@@ -631,6 +633,9 @@ def cmd_config(args):
 def main():
     parser = argparse.ArgumentParser(
         description="Pro Tools session version control via PTSL"
+    )
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"ptvc {__version__}"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
