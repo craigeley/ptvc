@@ -552,7 +552,7 @@ def main():
 
     # snapshot
     snap_parser = subparsers.add_parser(
-        "snapshot", help="Create a versioned snapshot of the current session"
+        "snapshot", aliases=["s"], help="Create a versioned snapshot of the current session"
     )
     snap_parser.add_argument(
         "notes", nargs="?", default="",
