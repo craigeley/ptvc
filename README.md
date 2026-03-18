@@ -1,6 +1,6 @@
 # ptvc — Pro Tools Version Control
 
-`ptvc` is a CLI tool that creates versioned snapshots of Pro Tools sessions via the PTSL gRPC API. Each snapshot copies the `.ptx` session file into a `Versions/` folder alongside the session, with a human-readable markdown log.
+`ptvc` is a CLI tool that creates versioned snapshots of Pro Tools sessions via the PTSL gRPC API. Each snapshot archives the `.ptx` session file into a `Versions/` folder and advances Pro Tools to the next version, with a human-readable markdown log.
 
 Requires Pro Tools 2025+ running on the same machine.
 
@@ -20,16 +20,29 @@ When you run `ptvc snapshot`, it:
 
 1. Connects to Pro Tools via its built-in gRPC server (`localhost:31416`)
 2. Saves the current session
-3. Copies the `.ptx` file into a `Versions/` folder within the session folder
-4. Updates a machine-readable JSON index and a human-readable markdown log
+3. Uses SaveSessionAs to advance Pro Tools to the next version
+4. Moves the previous `.ptx` file into a `Versions/` folder within the session folder
+5. Updates a machine-readable JSON index and a human-readable markdown log
 
 You can run `ptvc` from any directory in your terminal — it asks Pro Tools which session is open and works from there.
+
+### Snapshot modes
+
+`ptvc` has two snapshot modes:
+
+- **`live`** (default) — Advances Pro Tools to the next version via SaveSessionAs and archives the previous `.ptx` into `Versions/`. You're always working in the latest version.
+- **`archive`** — Copies the `.ptx` into `Versions/` without changing the active session. The original session file stays untouched.
+
+```bash
+ptvc config --mode live       # default
+ptvc config --mode archive
+```
 
 ## Usage
 
 ### Creating snapshots
 
-Basic usage: `ptvc snapshot "note here"`; note that `s` can be used as a shortcut for `snapshot.
+Basic usage: `ptvc snapshot "note here"`; note that `s` can be used as a shortcut for `snapshot`.
 
 ```bash
 ptvc snapshot "Added theme music"
@@ -41,7 +54,7 @@ ptvc snapshot "Final mix" --bump 1.00      # jump to version 1.00
 
 The `--tag` flag overrides the version label for a single snapshot without affecting the numbering sequence. The `--bump` flag jumps to a specific version number, and future snapshots increment from there.
 
-By default, snapshots are saved into the `Versions/` folder. Pass the `--root` command to save the snapshot alongside the main session file instead:
+In archive mode, snapshots are saved into the `Versions/` folder by default. Pass the `--root` flag to save the snapshot alongside the main session file instead:
 
 ```bash
 ptvc s "Alt mix for client" --root
@@ -95,7 +108,7 @@ ptvc config --folder-name "Snapshots"      # rename the versions folder
 
 #### Session info text export
 
-Optionally export Pro Tools' session info (file list, markers, plugin list) as a text file alongside each snapshot. This could be useful for diffing in git.
+Optionally export Pro Tools' session info (file list, markers, plugin list) as a text file alongside each snapshot. This could be useful for diffing in `git`.
 
 ```bash
 ptvc config --text-export on               # enable (off by default)

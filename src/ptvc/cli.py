@@ -3,13 +3,14 @@
 Pro Tools Session Version Control
 
 Creates versioned snapshots of Pro Tools sessions with human-readable
-markdown logs. Each snapshot uses SaveSessionAs to create a full copy
-that Pro Tools can open directly (preserving Import Session Data access).
+markdown logs. In live mode (default), each snapshot advances Pro Tools
+to the next version via SaveSessionAs and archives the previous .ptx.
 
 Usage:
     ptvc snapshot "Added background vocals, revised chorus"
     ptvc log
     ptvc info
+    ptvc config --mode archive
     ptvc config --start-number 0.00 --increment-by 0.05
     ptvc config --prefix "mix-"
 """
@@ -18,6 +19,7 @@ import argparse
 from decimal import Decimal, ROUND_DOWN
 import json
 import os
+import re
 import shutil
 import sys
 from datetime import datetime
@@ -41,6 +43,7 @@ DEFAULT_CONFIG = {
     "zero_pad": 3,        # number of digits to pad (e.g., 3 → v001)
     "folder_name": DEFAULT_VERSION_DIR_NAME,
     "date_format": "",    # strftime format string; empty = numeric mode
+    "mode": "live",       # "live" = SaveSessionAs + move old .ptx to Versions/; "archive" = copy .ptx only
     "text_export": False,  # export session info as text with each snapshot
     "text_format": "UTF8",  # UTF8, TextEdit, or Excel
 }
@@ -191,6 +194,35 @@ def format_date_version(config, existing_versions, timestamp=None):
         return f"{base_tag}-{count + 1}", date_str
 
 
+def get_base_session_name(session_name, config, index):
+    """Strip a version suffix from the session name if present.
+
+    In live mode, Pro Tools switches to sessions named like "Song v002".
+    We need to recover the base name "Song" for building the next version name.
+
+    Strategy:
+    1. Check if the name ends with any known version tag from the index
+    2. Fall back to a regex built from the config's prefix + number format
+    """
+    # Check known version tags (most recent first)
+    for v in reversed(index.get("versions", [])):
+        tag = v.get("version_tag", "")
+        if tag and session_name.endswith(tag):
+            return session_name[:-len(tag)]
+
+    # Regex fallback based on config format
+    prefix = re.escape(config.get("prefix", ""))
+    if config.get("date_format"):
+        # Date tags: prefix + non-whitespace chars, optional -N counter
+        pattern = f"{prefix}\\S+(?:-\\d+)?$"
+    else:
+        # Numeric tags: prefix + digits with optional decimal part
+        pattern = f"{prefix}\\d+(?:\\.\\d+)?$"
+
+    stripped = re.sub(pattern, "", session_name)
+    return stripped if stripped else session_name
+
+
 def next_version_number(index):
     """Calculate the next version number from config and existing versions."""
     config = get_config(index)
@@ -244,23 +276,63 @@ def cmd_snapshot(args):
     timestamp = datetime.now()
     notes = args.notes
 
+    live_mode = config.get("mode", "live") == "live"
+
+    # In live mode, strip any existing version suffix from the session name
+    # so we don't stack tags (e.g., "Song v001 v002")
+    if live_mode:
+        base_name = get_base_session_name(session_name, config, index)
+    else:
+        base_name = session_name
+
     # Snapshot is just a copy of the .ptx file in the Versions folder
-    snapshot_filename = f"{session_name}{version_tag}"
+    snapshot_filename = f"{base_name}{version_tag}"
     version_dir.mkdir(parents=True, exist_ok=True)
 
     # Save current session first
     print(f"Saving current session...")
     client.save_session()
 
-    # Copy the .ptx file
-    if args.root:
-        dest_dir = Path(session_path).parent
-    else:
-        dest_dir = version_dir
-    print(f"Creating snapshot: {snapshot_filename}.ptx")
+    next_session_name = None
     source_ptx = Path(session_path)
-    dest_ptx = dest_dir / f"{snapshot_filename}.ptx"
-    shutil.copy2(str(source_ptx), str(dest_ptx))
+
+    if live_mode:
+        # Live mode: advance first, then move the old .ptx into Versions/
+        # 1. Calculate next version
+        if config.get("date_format"):
+            next_version_tag, _ = format_date_version(
+                config, index["versions"] + [{"version_tag": version_tag}]
+            )
+        elif args.bump:
+            next_num = Decimal(args.bump) + Decimal(config["increment_by"])
+            next_version_tag = format_version_number(next_num, config)
+        else:
+            next_num = Decimal(version_num) + Decimal(config["increment_by"])
+            next_version_tag = format_version_number(next_num, config)
+
+        next_session_name = f"{base_name}{next_version_tag}"
+
+        # 2. SaveSessionAs to advance (PT switches to the new session)
+        session_folder = Path(session_path).parent
+        # Trailing slash is required — Pro Tools' path parser asserts without it
+        session_location = str(session_folder) + "/"
+
+        print(f"Advancing to: {next_session_name}")
+        client.save_session_as(next_session_name, session_location)
+
+        # 3. Move the old .ptx into Versions/ (it's no longer the active session)
+        dest_ptx = version_dir / f"{snapshot_filename}.ptx"
+        print(f"Archiving: {snapshot_filename}.ptx")
+        shutil.move(str(source_ptx), str(dest_ptx))
+    else:
+        # Archive mode: copy .ptx to Versions/ (or root if --root)
+        if args.root:
+            dest_dir = Path(session_path).parent
+        else:
+            dest_dir = version_dir
+        print(f"Creating snapshot: {snapshot_filename}.ptx")
+        dest_ptx = dest_dir / f"{snapshot_filename}.ptx"
+        shutil.copy2(str(source_ptx), str(dest_ptx))
 
     # Export session info as text
     do_export = config.get("text_export", True)
@@ -292,7 +364,7 @@ def cmd_snapshot(args):
         "notes": notes,
         "session_name": session_name,
         "snapshot_filename": snapshot_filename,
-        "snapshot_path": str(dest_dir / snapshot_filename) + ".ptx",
+        "snapshot_path": str(dest_ptx),
         "track_count": info["track_count"],
         "clip_count": info["clip_count"],
     }
@@ -308,6 +380,8 @@ def cmd_snapshot(args):
     print(f"\nSnapshot created successfully!")
     print(f"  Version: {version_tag}")
     print(f"  File: {snapshot_filename}.ptx")
+    if next_session_name:
+        print(f"  Now working in: {next_session_name}")
     if notes:
         print(f"  Notes: {notes}")
 
@@ -484,6 +558,10 @@ def cmd_config(args):
         else:
             print("Switched back to numeric versioning.")
 
+    if args.mode is not None:
+        index["config"]["mode"] = args.mode
+        changed = True
+
     if args.text_export is not None:
         index["config"]["text_export"] = (args.text_export == "on")
         changed = True
@@ -500,8 +578,10 @@ def cmd_config(args):
     config = get_config(index)
     date_fmt = config.get("date_format", "")
 
+    mode = config.get("mode", "archive")
     print(f"Session:      {info['session_name']}")
     print(f"Folder:       {config['folder_name']}/")
+    print(f"Snapshot mode: {mode}")
     if date_fmt:
         print(f"Mode:         date-based")
         print(f"Date format:  {date_fmt}")
@@ -615,6 +695,11 @@ def main():
     config_parser.add_argument(
         "--folder-name", default=None,
         help=f"Name of the versions folder (default: '{DEFAULT_VERSION_DIR_NAME}')"
+    )
+    config_parser.add_argument(
+        "--mode", default=None, choices=["archive", "live"],
+        help="Snapshot mode: 'archive' copies .ptx to Versions/; "
+             "'live' archives + uses SaveSessionAs to advance the working session"
     )
     config_parser.add_argument(
         "--date-format", default=None,

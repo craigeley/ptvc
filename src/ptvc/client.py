@@ -67,6 +67,45 @@ class PTSLClient:
 
         return response
 
+    def send_streaming_command(self, command_id, body_json=""):
+        """Send an async PTSL command via streaming and wait for completion.
+
+        Used for commands like SaveSessionAs, OpenSession, CreateSession that
+        require the streaming RPC endpoint and task status polling.
+        """
+        header = PTSL_pb2.RequestHeader(
+            task_id="",
+            command=command_id,
+            version=PTSL_VERSION_MAJOR,
+            version_minor=PTSL_VERSION_MINOR,
+            version_revision=PTSL_VERSION_REVISION,
+            session_id=self.session_id,
+        )
+        request = PTSL_pb2.Request(
+            header=header,
+            request_body_json=body_json,
+        )
+        try:
+            responses = self.stub.SendGrpcStreamingRequest(request)
+            final_response = None
+            for response in responses:
+                final_response = response
+                status = response.header.status
+                # 3 = Completed, 4 = Failed
+                if status == 4:
+                    raise RuntimeError(
+                        f"PTSL command failed.\n"
+                        f"  Error: {response.response_error_json}\n"
+                        f"  Response: {response.response_body_json}"
+                    )
+                if status == 3:
+                    break
+            return final_response
+        except grpc.RpcError as e:
+            raise RuntimeError(
+                f"gRPC error: {e.code().name} — {e.details()}"
+            ) from e
+
     def register_connection(self, company_name, application_name):
         """Register with Pro Tools. Must be called before any other command."""
         body = json.dumps({
@@ -97,12 +136,16 @@ class PTSLClient:
         self.send_command(PTSL_pb2.CId_SaveSession)
 
     def save_session_as(self, session_name, session_location):
-        """Save the current session as a new file."""
+        """Save the current session as a new file.
+
+        Uses the streaming RPC endpoint since SaveSessionAs is an async
+        command in Pro Tools that requires task status polling.
+        """
         body = json.dumps({
             "session_name": session_name,
             "session_location": session_location,
         })
-        self.send_command(PTSL_pb2.CId_SaveSessionAs, body)
+        self.send_streaming_command(PTSL_pb2.CId_SaveSessionAs, body)
 
     def get_session_sample_rate(self):
         response = self.send_command(PTSL_pb2.CId_GetSessionSampleRate)

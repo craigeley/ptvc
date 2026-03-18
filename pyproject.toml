@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ptvc"
-version = "0.3.2"
+version = "0.4.0"
 description = "Pro Tools Version Control — versioned snapshots of Pro Tools sessions via PTSL"
 readme = "README.md"
 license = "MIT"
