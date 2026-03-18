@@ -14,15 +14,15 @@ Note: The first install takes ~4 minutes because the gRPC dependency compiles fr
 
 ## How It Works
 
-By default, Pro Tools makes automatic backups of session files every x minutes based on user settings. However, these backups are sequentially numbered, deleted over time, and do not contain any meaningful, easily-readable notes or metadata. It was built for podcast and audio documentary professionals, but could be useful for anyone using Pro Tools.
+By default, Pro Tools makes automatic backups of session files every x minutes based on user settings. However, these backups have hardcoded numbers, are eventually deleted over time, and do not contain any readable notes or metadata.
 
-`ptvc` creates manual backups with user-specified version numbers and an accompanying notes file to help you manage your backups and generate text files that could be easily used in `git`-based workflows.
+`ptvc` creates manual backups with user-specified version numbers and an accompanying notes file to help you manage your backups and generate text files that could be easily used in `git`-based workflows. It was built for podcast and audio documentary professionals, but could be useful for anyone using Pro Tools.
 
 When you run `ptvc snapshot`, it:
 
 1. Connects to Pro Tools via its built-in gRPC server (`localhost:31416`)
 2. Saves the current session
-3. Copies the `.ptx` file into a `Versions/` folder next to the session
+3. Copies the `.ptx` file into a `Versions/` folder within the session folder
 4. Updates a machine-readable JSON index and a human-readable markdown log
 
 You can run `ptvc` from any directory in your terminal — it asks Pro Tools which session is open and works from there.
@@ -88,7 +88,7 @@ ptvc config --folder-name "Snapshots"      # rename the versions folder
 
 #### Session info text export
 
-Optionally export Pro Tools' session info (file list, markers, plugin list) as a text file alongside each snapshot. This is useful for diffing in git.
+Optionally export Pro Tools' session info (file list, markers, plugin list) as a text file alongside each snapshot. This could be useful for diffing in git.
 
 ```bash
 ptvc config --text-export on               # enable (off by default)
