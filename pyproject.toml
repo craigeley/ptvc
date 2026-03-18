@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ptvc"
-version = "0.4.1"
+version = "0.5.0"
 description = "Pro Tools Version Control — versioned snapshots of Pro Tools sessions via PTSL"
 readme = "README.md"
 license = "MIT"
@@ -12,6 +12,7 @@ requires-python = ">=3.9"
 dependencies = [
     "grpcio>=1.43.0",
     "grpcio-tools>=1.43.0",
+    "pyyaml>=6.0",
 ]
 
 [project.scripts]

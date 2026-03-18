@@ -27,6 +27,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 from .client import PTSLClient
 
 # Stored alongside the session folder
@@ -49,6 +51,78 @@ DEFAULT_CONFIG = {
     "text_export": False,  # export session info as text with each snapshot
     "text_format": "UTF8",  # UTF8, TextEdit, or Excel
 }
+
+# Global templates file
+TEMPLATES_FILE = Path.home() / ".ptvc_templates.yaml"
+
+# Keys from DEFAULT_CONFIG that are valid in templates
+TEMPLATE_KEYS = set(DEFAULT_CONFIG.keys())
+
+
+def _format_yaml_value(val):
+    """Format a Python value as a YAML-friendly string for comments."""
+    if isinstance(val, bool):
+        return "true" if val else "false"
+    if isinstance(val, int):
+        return str(val)
+    if isinstance(val, str):
+        return f'"{val}"' if val else '""'
+    return str(val)
+
+
+def _templates_header():
+    """Build the comment header for the templates file."""
+    lines = [
+        "# ptvc user templates",
+        "#",
+        "# Each template is a named set of config settings that can be applied",
+        "# to any session with:  ptvc config --template <name>",
+        "#",
+        "# Templates only need to include the settings you want to change.",
+        "# Any omitted settings will keep their current value (or the default).",
+        "#",
+        "# Available settings and their defaults:",
+    ]
+    for key, val in DEFAULT_CONFIG.items():
+        lines.append(f"#   {key}: {_format_yaml_value(val)}")
+    lines += [
+        "#",
+        "# Example:",
+        "#",
+        "# templates:",
+        '#   podcast:',
+        '#     prefix: " ep"',
+        "#     zero_pad: 2",
+        "#     mode: archive",
+        "#     text_export: true",
+        "#",
+        "",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def load_templates():
+    """Load the global templates file, seeding it with defaults if it doesn't exist."""
+    if not TEMPLATES_FILE.exists():
+        seed_templates_file()
+    with open(TEMPLATES_FILE, "r") as f:
+        data = yaml.safe_load(f)
+    return data.get("templates", {}) if data else {}
+
+
+def save_templates(templates):
+    """Save templates back to the global file, preserving the header."""
+    header = _templates_header()
+    body = yaml.dump({"templates": templates}, default_flow_style=False, sort_keys=False)
+    with open(TEMPLATES_FILE, "w") as f:
+        f.write(header + body)
+
+
+def seed_templates_file():
+    """Create the templates file with comments showing defaults and an example."""
+    header = _templates_header()
+    with open(TEMPLATES_FILE, "w") as f:
+        f.write(header + "templates: {}\n")
 
 
 def connect():
@@ -491,6 +565,24 @@ def cmd_config(args):
 
     changed = False
 
+    # Apply template first (individual flags can override)
+    if args.template is not None:
+        templates = load_templates()
+        name = args.template
+        if name not in templates:
+            available = ", ".join(sorted(templates.keys())) if templates else "(none)"
+            print(f"Error: No template named '{name}'.")
+            print(f"Available templates: {available}")
+            sys.exit(1)
+        template = templates[name]
+        for key, val in template.items():
+            if key not in TEMPLATE_KEYS:
+                print(f"Warning: Ignoring unknown template key '{key}'.")
+                continue
+            index["config"][key] = val
+        changed = True
+        print(f"Applied template: {name}")
+
     if args.start_number is not None:
         # Validate it's a valid number
         try:
@@ -630,6 +722,72 @@ def cmd_config(args):
             print(f"  {tag}{marker}")
 
 
+def cmd_template(args):
+    """Manage global config templates."""
+    action = args.action
+
+    if action == "save":
+        client = connect()
+        info = get_session_info(client)
+        client.close()
+
+        version_dir = find_version_dir(info["session_path"])
+        index = load_version_index(version_dir)
+        config = get_config(index)
+
+        # Build a partial config: only include non-default values
+        template = {}
+        for key, default_val in DEFAULT_CONFIG.items():
+            if config[key] != default_val:
+                template[key] = config[key]
+
+        if not template:
+            print("Current session config matches all defaults — nothing to save.")
+            print("Customize your session config first with: ptvc config --<setting> <value>")
+            return
+
+        templates = load_templates()
+        name = args.name
+        verb = "Updated" if name in templates else "Saved"
+        templates[name] = template
+        save_templates(templates)
+        print(f"{verb} template '{name}' in {TEMPLATES_FILE}")
+        for key, val in template.items():
+            print(f"  {key}: {val}")
+
+    elif action == "list":
+        templates = load_templates()
+        if not templates:
+            print(f"No templates saved yet.")
+            print(f"Use 'ptvc template save <name>' to save your current session config as a template.")
+            return
+        print("Saved templates:\n")
+        for name, settings in templates.items():
+            summary = ", ".join(f"{k}={v}" for k, v in settings.items())
+            print(f"  {name}: {summary}")
+
+    elif action == "show":
+        templates = load_templates()
+        name = args.name
+        if name not in templates:
+            print(f"Error: No template named '{name}'.")
+            sys.exit(1)
+        print(f"Template: {name}\n")
+        for key, val in templates[name].items():
+            print(f"  {key}: {val}")
+        print(f"\n(All other settings use defaults when applied.)")
+
+    elif action == "delete":
+        templates = load_templates()
+        name = args.name
+        if name not in templates:
+            print(f"Error: No template named '{name}'.")
+            sys.exit(1)
+        del templates[name]
+        save_templates(templates)
+        print(f"Deleted template '{name}'.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Pro Tools session version control via PTSL"
@@ -682,6 +840,10 @@ def main():
         "config", help="View or update versioning settings for this session"
     )
     config_parser.add_argument(
+        "--template", "-t", default=None,
+        help="Apply a named template from ~/.ptvc_templates.yaml"
+    )
+    config_parser.add_argument(
         "--start-number", default=None,
         help="Starting version number (e.g., '1', '0.00', '100')"
     )
@@ -720,6 +882,33 @@ def main():
         help="Format for session info text export (default: UTF8)"
     )
     config_parser.set_defaults(func=cmd_config)
+
+    # template
+    template_parser = subparsers.add_parser(
+        "template", help="Manage global config templates (~/.ptvc_templates.yaml)"
+    )
+    template_sub = template_parser.add_subparsers(dest="action", required=True)
+
+    save_tmpl = template_sub.add_parser(
+        "save", help="Save the current session's config as a named template"
+    )
+    save_tmpl.add_argument("name", help="Template name (e.g., 'podcast', 'song exploder')")
+
+    list_tmpl = template_sub.add_parser(
+        "list", help="List all saved templates"
+    )
+
+    show_tmpl = template_sub.add_parser(
+        "show", help="Show the settings in a template"
+    )
+    show_tmpl.add_argument("name", help="Template name to show")
+
+    delete_tmpl = template_sub.add_parser(
+        "delete", help="Delete a saved template"
+    )
+    delete_tmpl.add_argument("name", help="Template name to delete")
+
+    template_parser.set_defaults(func=cmd_template)
 
     args = parser.parse_args()
     args.func(args)
