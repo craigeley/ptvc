@@ -105,6 +105,14 @@ You can also skip the export for a single snapshot:
 ptvc snapshot "Quick save" --no-text-export
 ```
 
+#### Saving to the session root
+
+By default, snapshots are saved into the `Versions/` folder. Use `--root` to save the snapshot alongside the main session file instead:
+
+```bash
+ptvc snapshot "Alt mix for client" --root
+```
+
 ## Development
 
 ```bash

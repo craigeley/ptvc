@@ -252,10 +252,14 @@ def cmd_snapshot(args):
     print(f"Saving current session...")
     client.save_session()
 
-    # Copy the .ptx file into the Versions folder
+    # Copy the .ptx file
+    if args.root:
+        dest_dir = Path(session_path).parent
+    else:
+        dest_dir = version_dir
     print(f"Creating snapshot: {snapshot_filename}.ptx")
     source_ptx = Path(session_path)
-    dest_ptx = version_dir / f"{snapshot_filename}.ptx"
+    dest_ptx = dest_dir / f"{snapshot_filename}.ptx"
     shutil.copy2(str(source_ptx), str(dest_ptx))
 
     # Export session info as text
@@ -288,7 +292,7 @@ def cmd_snapshot(args):
         "notes": notes,
         "session_name": session_name,
         "snapshot_filename": snapshot_filename,
-        "snapshot_path": str(version_dir / snapshot_filename) + ".ptx",
+        "snapshot_path": str(dest_dir / snapshot_filename) + ".ptx",
         "track_count": info["track_count"],
         "clip_count": info["clip_count"],
     }
@@ -569,6 +573,10 @@ def main():
     snap_parser.add_argument(
         "--no-text-export", action="store_true", default=False,
         help="Skip the session info text export for this snapshot"
+    )
+    snap_parser.add_argument(
+        "--root", action="store_true", default=False,
+        help="Save snapshot in the session's top-level folder instead of the Versions folder"
     )
     snap_parser.set_defaults(func=cmd_snapshot)
 
