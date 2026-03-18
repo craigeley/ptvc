@@ -17,3 +17,4 @@ src/*.egg-info/
 
 # macOS
 .DS_Store
+CLAUDE.md
