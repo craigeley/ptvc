@@ -41,6 +41,12 @@ ptvc snapshot "Final mix" --bump 1.00      # jump to version 1.00
 
 The `--tag` flag overrides the version label for a single snapshot without affecting the numbering sequence. The `--bump` flag jumps to a specific version number, and future snapshots increment from there.
 
+By default, snapshots are saved into the `Versions/` folder. Pass the `--root` command to save the snapshot alongside the main session file instead:
+
+```bash
+ptvc s "Alt mix for client" --root
+```
+
 ### Viewing history
 
 ```bash
@@ -103,14 +109,6 @@ You can also skip the export for a single snapshot:
 
 ```bash
 ptvc snapshot "Quick save" --no-text-export
-```
-
-#### Saving to the session root
-
-By default, snapshots are saved into the `Versions/` folder. Use `--root` to save the snapshot alongside the main session file instead:
-
-```bash
-ptvc snapshot "Alt mix for client" --root
 ```
 
 ## Development
