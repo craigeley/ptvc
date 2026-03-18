@@ -10,6 +10,8 @@ Requires Pro Tools 2025+ running on the same machine.
 brew install craigeley/tap/ptvc
 ```
 
+Note: The first install takes ~4 minutes because the gRPC dependency compiles from source.
+
 ### Development install
 
 If you want to make changes to the code:
