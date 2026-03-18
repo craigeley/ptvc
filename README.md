@@ -33,6 +33,7 @@ You can run `ptvc` from any directory in your terminal — it asks Pro Tools whi
 
 ```bash
 ptvc snapshot "Added theme music"
+ptvc s "Added theme music"                 # shorthand alias
 ptvc snapshot                              # no notes
 ptvc snapshot "Rough cut" --tag "rough"    # custom one-off label
 ptvc snapshot "Final mix" --bump 1.00      # jump to version 1.00
