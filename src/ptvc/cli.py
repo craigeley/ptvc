@@ -305,12 +305,13 @@ def next_version_number(index):
     start = Decimal(config["start_number"])
     increment = Decimal(config["increment_by"])
 
-    if not index["versions"]:
-        return start
+    # Find the last numbered version (skip --tag one-offs)
+    for v in reversed(index["versions"]):
+        if v.get("version_number") is not None:
+            last_num = Decimal(str(v["version_number"]))
+            return last_num + increment
 
-    # Get the last version's number and add the increment
-    last_num = Decimal(str(index["versions"][-1]["version_number"]))
-    return last_num + increment
+    return start
 
 
 def cmd_snapshot(args):
@@ -339,7 +340,7 @@ def cmd_snapshot(args):
         version_num = str(bump_num)
     elif args.tag:
         version_tag = args.tag
-        version_num = str(next_version_number(index))
+        version_num = None
     elif config.get("date_format"):
         version_tag, version_num = format_date_version(
             config, index["versions"]
@@ -372,7 +373,9 @@ def cmd_snapshot(args):
     next_session_name = None
     source_ptx = Path(session_path)
 
-    if live_mode:
+    # --tag is a one-off label: just copy the file without advancing,
+    # even in live mode (it shouldn't affect the versioning sequence)
+    if live_mode and not args.tag:
         # Live mode: advance first, then move the old .ptx into Versions/
         # 1. Calculate next version
         if config.get("date_format"):
@@ -396,12 +399,16 @@ def cmd_snapshot(args):
         print(f"Advancing to: {next_session_name}")
         client.save_session_as(next_session_name, session_location)
 
-        # 3. Move the old .ptx into Versions/ (it's no longer the active session)
-        dest_ptx = version_dir / f"{snapshot_filename}.ptx"
+        # 3. Move the old .ptx into Versions/ (or root if --root)
+        if args.root:
+            dest_dir = Path(session_path).parent
+        else:
+            dest_dir = version_dir
+        dest_ptx = dest_dir / f"{snapshot_filename}.ptx"
         print(f"Archiving: {snapshot_filename}.ptx")
         shutil.move(str(source_ptx), str(dest_ptx))
     else:
-        # Archive mode: copy .ptx to Versions/ (or root if --root)
+        # Archive mode (or --tag one-off): copy .ptx without advancing
         if args.root:
             dest_dir = Path(session_path).parent
         else:
