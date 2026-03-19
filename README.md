@@ -81,7 +81,7 @@ ptvc config --zero-pad 3             # zero-pad digits (default: 3, e.g., v001)
 ```
 
 > [!TIP]
-> If you are implementing this into an existing project and using live mode, `-- start number` should reflect the version that you are currently on.
+> If you are implementing this into an existing project and using live mode, `--start-number` should reflect the version that you are currently on.
 
 Examples of what different configs produce:
 
