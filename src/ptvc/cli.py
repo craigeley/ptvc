@@ -299,6 +299,21 @@ def get_base_session_name(session_name, config, index):
     return stripped if stripped else session_name
 
 
+def extract_version_suffix(session_name, config):
+    """Extract the version tag suffix from a session name, if present.
+
+    Returns the matched suffix string (e.g. " v007") or None.
+    """
+    prefix = re.escape(config.get("prefix", ""))
+    if config.get("date_format"):
+        pattern = f"({prefix}\\S+(?:-\\d+)?)$"
+    else:
+        pattern = f"({prefix}\\d+(?:\\.\\d+)?)$"
+
+    m = re.search(pattern, session_name)
+    return m.group(1) if m else None
+
+
 def next_version_number(index):
     """Calculate the next version number from config and existing versions."""
     config = get_config(index)
@@ -327,6 +342,54 @@ def cmd_snapshot(args):
     version_dir.mkdir(parents=True, exist_ok=True)
     index = load_version_index(version_dir)
     config = get_config(index)
+
+    # In live mode, check if the session filename's version matches the index
+    live_mode_early = config.get("mode", "live") == "live"
+    if (live_mode_early and index["versions"]
+            and not args.tag and not args.bump):
+        current_suffix = extract_version_suffix(session_name, config)
+        if current_suffix:
+            known_tags = {
+                v.get("version_tag", "") for v in index["versions"]
+            }
+            last_tag = index["versions"][-1].get("version_tag", "")
+            # The expected next tag is what live mode would have advanced to
+            # after the last snapshot — this is the normal working state
+            if not config.get("date_format"):
+                expected_next = format_version_number(
+                    next_version_number(index), config
+                )
+                known_tags.add(expected_next)
+            if current_suffix not in known_tags:
+                print(
+                    f"Warning: Session is \"{session_name}\" but the last "
+                    f"recorded version is \"{last_tag}\"."
+                )
+                print(
+                    "The session may have been renamed or modified "
+                    "outside ptvc.\n"
+                )
+                print(f"  [c] Continue with next calculated version")
+                print(f"  [b] Bump to match filename ({current_suffix}) "
+                      f"and continue from there")
+                print(f"  [q] Quit")
+                choice = input("\nChoice [c/b/q]: ").strip().lower()
+                if choice == "q":
+                    sys.exit(0)
+                elif choice == "b":
+                    # Extract the numeric part from the suffix to use as bump
+                    prefix = config.get("prefix", "")
+                    bump_str = current_suffix
+                    if bump_str.startswith(prefix):
+                        bump_str = bump_str[len(prefix):]
+                    # Validate it parses as a number before proceeding
+                    try:
+                        Decimal(bump_str)
+                    except Exception:
+                        print(f"Error: Could not parse \"{current_suffix}\" "
+                              f"as a version number.")
+                        sys.exit(1)
+                    args.bump = bump_str
 
     # Determine version tag
     if args.bump:
