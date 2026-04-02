@@ -627,7 +627,6 @@ def cmd_config(args):
     client.close()
 
     version_dir = find_version_dir(info["session_path"])
-    version_dir.mkdir(parents=True, exist_ok=True)
     index = load_version_index(version_dir)
 
     if "config" not in index:
@@ -735,6 +734,7 @@ def cmd_config(args):
         changed = True
 
     if changed:
+        version_dir.mkdir(parents=True, exist_ok=True)
         save_version_index(version_dir, index)
         print("Config updated.\n")
 
