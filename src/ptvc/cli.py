@@ -635,6 +635,7 @@ def cmd_config(args):
     changed = False
 
     # Apply template first (individual flags can override)
+    template_folder_name = None
     if args.template is not None:
         templates = load_templates()
         name = args.template
@@ -648,9 +649,17 @@ def cmd_config(args):
             if key not in TEMPLATE_KEYS:
                 print(f"Warning: Ignoring unknown template key '{key}'.")
                 continue
+            if key == "folder_name":
+                # Defer folder_name; handle it through the same path as --folder-name
+                # so the directory gets renamed/created on disk.
+                template_folder_name = val
+                continue
             index["config"][key] = val
         changed = True
         print(f"Applied template: {name}")
+
+    # Let an explicit --folder-name flag override a template's folder_name.
+    folder_name_value = args.folder_name if args.folder_name is not None else template_folder_name
 
     if args.start_number is not None:
         # Validate it's a valid number
@@ -684,8 +693,8 @@ def cmd_config(args):
         index["config"]["zero_pad"] = args.zero_pad
         changed = True
 
-    if args.folder_name is not None:
-        new_name = args.folder_name.strip()
+    if folder_name_value is not None:
+        new_name = folder_name_value.strip()
         if not new_name:
             print("Error: folder name cannot be empty.")
             sys.exit(1)
